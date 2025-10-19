@@ -3,30 +3,32 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Blackjack — 4-Player Twitch Overlay</title>
+<title>Blackjack — Twitch Overlay</title>
 <script src="https://cdn.jsdelivr.net/npm/tmi.js/dist/tmi.min.js"></script>
 <style>
   :root{--bg:#0c0f14;--panel:#121826;--accent:#20d3a6;--muted:#9aa4b2;--text:#eef2f7;--good:#45e39a;--bad:#ff6b6b;--warn:#ffb454;}
   html,body{height:100%;margin:0;background:#0c0f14;color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
   .wrap{max-width:1400px;margin:auto;padding:12px}
-  .topbar{display:flex;gap:8px;align-items:center;margin-bottom:8px}
-  .topbar input{width:240px;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:#0f1422;color:var(--text)}
+  .topbar{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+  .topbar input{width:200px;padding:6px;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:#0f1422;color:var(--text)}
   .badge{background:#1a233c;border:1px solid rgba(255,255,255,.1);padding:6px 10px;border-radius:999px;font-size:12px}
   .btn{background:var(--accent);color:#041a16;border:none;padding:8px 12px;border-radius:10px;font-weight:800;cursor:pointer}
+  label{font-size:13px;color:#fff}
+  select{padding:4px 6px;border-radius:6px;background:#1b233a;color:#fff;border:1px solid rgba(255,255,255,.2)}
   .layout{display:grid;grid-template-columns:1fr 340px;gap:12px}
   .panel{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px}
   .table{background:#0f1527;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:12px}
   .dealer{margin-bottom:10px;padding:8px;border:1px dashed rgba(255,255,255,.12);border-radius:12px}
   .row{display:flex;gap:10px;flex-wrap:wrap}
-  .handbox{flex:1 1 320px;min-width:300px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px}
-  .handhead{display:flex;justify-content:space-between;margin-bottom:8px}
-  .cards{display:flex;gap:6px;flex-wrap:wrap;min-height:100px}
-  .card{width:64px;height:92px;border-radius:8px;background:#12203a;border:1px solid rgba(255,255,255,.10);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;position:relative}
+  .handbox{flex:1 1 300px;min-width:280px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px}
+  .handhead{display:flex;justify-content:space-between;margin-bottom:6px}
+  .cards{display:flex;gap:6px;flex-wrap:wrap;min-height:90px}
+  .card{width:60px;height:88px;border-radius:8px;background:#12203a;border:1px solid rgba(255,255,255,.10);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;position:relative}
   .card .sm{position:absolute;top:6px;left:8px;font-size:14px}
   .card.red{color:#ff8a8a}
   .card.hidden{background:linear-gradient(135deg,#1d2a52,#0f1732);border-color:#1b2446}
   .status{font-size:13px;color:var(--muted);min-height:18px}
-  .timer{font-size:14px;font-weight:800;color:var(--warn);margin-top:4px}
+  .timer{font-size:14px;font-weight:800;color:var(--warn);margin-top:2px}
   .result.win{color:var(--good)} .result.lose{color:var(--bad)} .result.push{color:var(--warn)}
   .list{max-height:220px;overflow:auto;font-size:14px}
   .line{padding:4px 6px;border-bottom:1px solid rgba(255,255,255,.06)}
@@ -41,6 +43,14 @@
     <input id="channelInput" type="text" placeholder="Twitch channel (e.g. ryaah)">
     <button id="connectBtn" class="btn">Connect</button>
     <span class="badge" id="conn">Not connected</span>
+    <label>Seats: 
+      <select id="seatSelect">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4" selected>4</option>
+      </select>
+    </label>
   </div>
   <div class="layout">
     <div class="table panel">
@@ -62,7 +72,7 @@
 </div>
 
 <script>
-const MAX_PLAYERS=4,FIXED_BET=10,START_BANKROLL=10,TIMEOUT=20;
+let MAX_PLAYERS=4,FIXED_BET=10,START_BANKROLL=10,TIMEOUT=20;
 let client=null,shoe=[],dealer={},activePlayers=[],queue=[],joinPool=new Set();
 let inRound=false,turn=-1,timer=null,countdown=null,timeLeft=TIMEOUT;
 
@@ -77,7 +87,7 @@ function render(){const dc=$('dealerCards');dc.innerHTML='';dealer.hand.forEach(
 function pushChat(n,m){const cb=$('chatBox');const d=document.createElement('div');d.className='msg';d.innerHTML=`<b>${n}:</b> ${m}`;cb.appendChild(d);cb.scrollTop=cb.scrollHeight;}
 function ensureSeats(){while(activePlayers.length<MAX_PLAYERS&&queue.length>0){activePlayers.push({name:queue.shift(),bankroll:START_BANKROLL,hand:[],result:null});}}
 function startRound(){if(inRound)return;ensureSeats();if(activePlayers.length<MAX_PLAYERS){$('roundInfo').textContent=`Waiting for players (${activePlayers.length}/${MAX_PLAYERS})`;render();return;}inRound=true;turn=0;dealer={hand:[draw(),draw()],reveal:false};activePlayers.forEach(p=>{p.hand=[draw(),draw()];p.result=null;});$('roundInfo').textContent=`${activePlayers[0].name}'s turn`;render();promptTurn();}
-function promptTurn(){clearTimeout(timer);clearInterval(countdown);timeLeft=TIMEOUT;countdown=setInterval(()=>{timeLeft--;render();if(timeLeft<=0){clearInterval(countdown);const p=activePlayers[turn];p.result={type:'lose',text:'⏰ Timeout — Busted'};p.bankroll=0;nextPlayerOrDealer();}},1000);}
+function promptTurn(){clearInterval(countdown);timeLeft=TIMEOUT;countdown=setInterval(()=>{timeLeft--;render();if(timeLeft<=0){clearInterval(countdown);const p=activePlayers[turn];p.result={type:'lose',text:'⏰ Timeout — Busted'};p.bankroll=0;nextPlayerOrDealer();}},1000);}
 function handleHit(u){if(!inRound)return;const p=activePlayers[turn];if(!p||p.name.toLowerCase()!==u.toLowerCase())return;p.hand.push(draw());if(bestValue(p.hand)>21){p.result={type:'lose',text:'❌ Busted'};p.bankroll=0;clearInterval(countdown);nextPlayerOrDealer();}render();}
 function handleStand(u){if(!inRound)return;const p=activePlayers[turn];if(!p||p.name.toLowerCase()!==u.toLowerCase())return;p.result={type:'push',text:'Stood'};clearInterval(countdown);nextPlayerOrDealer();}
 function nextPlayerOrDealer(){turn++;if(turn<activePlayers.length){$('roundInfo').textContent=`${activePlayers[turn].name}'s turn`;render();promptTurn();}else playDealer();}
@@ -86,6 +96,7 @@ function endRound(){activePlayers=activePlayers.filter(p=>!(p.result?.type==='lo
 function joinCommand(n){if(activePlayers.find(p=>p.name.toLowerCase()===n.toLowerCase()))return;if(queue.find(x=>x.toLowerCase()===n.toLowerCase()))return;joinPool.add(n);queue.push(n);}
 function connectTwitch(ch){try{if(client)client.disconnect();}catch(_){ }client=new tmi.Client({connection:{secure:true,reconnect:true},channels:[ch]});client.connect().then(()=>{$('conn').textContent=`Connected: ${ch}`;});client.on('message',(chan,tags,msg,self)=>{if(self)return;const n=tags['display-name']||tags.username;pushChat(n,msg);const t=msg.trim().toLowerCase();if(t==='!join')joinCommand(n);if(t==='!hit')handleHit(n);if(t==='!stand')handleStand(n);});}
 $('connectBtn').onclick=()=>{const ch=$('channelInput').value.trim();if(ch)connectTwitch(ch);}
+$('seatSelect').onchange=()=>{MAX_PLAYERS=parseInt($('seatSelect').value,10);$('roundInfo').textContent=`Max players set to ${MAX_PLAYERS}`;render();}
 buildShoe();render();
 </script>
 </body>
