@@ -6,47 +6,33 @@
 <title>Blackjack — 4-Player Twitch Overlay</title>
 <script src="https://cdn.jsdelivr.net/npm/tmi.js/dist/tmi.min.js"></script>
 <style>
-  :root{
-    --bg:#0c0f14; --panel:#121826; --accent:#20d3a6; --muted:#9aa4b2; --text:#eef2f7;
-    --good:#45e39a; --bad:#ff6b6b; --warn:#ffb454;
-  }
-  *{box-sizing:border-box}
+  :root{--bg:#0c0f14;--panel:#121826;--accent:#20d3a6;--muted:#9aa4b2;--text:#eef2f7;--good:#45e39a;--bad:#ff6b6b;--warn:#ffb454;}
   html,body{height:100%;margin:0;background:#0c0f14;color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
-  .wrap{max-width:1400px;margin-inline:auto;padding:12px}
+  .wrap{max-width:1400px;margin:auto;padding:12px}
   .topbar{display:flex;gap:8px;align-items:center;margin-bottom:8px}
   .topbar input{width:240px;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:#0f1422;color:var(--text)}
   .badge{background:#1a233c;border:1px solid rgba(255,255,255,.1);padding:6px 10px;border-radius:999px;font-size:12px}
   .btn{background:var(--accent);color:#041a16;border:none;padding:8px 12px;border-radius:10px;font-weight:800;cursor:pointer}
-  .btn.alt{background:#253152;color:#dfe7f1}
-  .layout{display:grid;grid-template-columns:1fr 360px;gap:12px}
-  .panel{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px}
-  h2{margin:0 0 8px;font-size:16px}
-  .table{background:radial-gradient(900px 500px at 50% -40%,rgba(255,255,255,.12),rgba(255,255,255,.03) 60%), #0f1527;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:12px}
+  .layout{display:grid;grid-template-columns:1fr 340px;gap:12px}
+  .panel{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px}
+  .table{background:#0f1527;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:12px}
   .dealer{margin-bottom:10px;padding:8px;border:1px dashed rgba(255,255,255,.12);border-radius:12px}
-  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
   .handbox{flex:1 1 320px;min-width:300px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px}
-  .handhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-  .name{font-weight:800}
-  .bank{font-size:13px;color:var(--muted)}
-  .score{font-weight:800;margin-left:6px}
-  .cards{display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-height:114px}
-  .card{width:72px;height:102px;border-radius:10px;background:#12203a;border:1px solid rgba(255,255,255,.10);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;letter-spacing:.02em;position:relative}
+  .handhead{display:flex;justify-content:space-between;margin-bottom:8px}
+  .cards{display:flex;gap:6px;flex-wrap:wrap;min-height:100px}
+  .card{width:64px;height:92px;border-radius:8px;background:#12203a;border:1px solid rgba(255,255,255,.10);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;position:relative}
   .card .sm{position:absolute;top:6px;left:8px;font-size:14px}
   .card.red{color:#ff8a8a}
   .card.hidden{background:linear-gradient(135deg,#1d2a52,#0f1732);border-color:#1b2446}
   .status{font-size:13px;color:var(--muted);min-height:18px}
-  .active .handbox{box-shadow:0 0 0 2px var(--accent) inset}
-  .result{font-size:13px;font-weight:800}
-  .result.win{color:var(--good)}
-  .result.lose{color:var(--bad)}
-  .result.push{color:var(--warn)}
-  .sidecol .panel{margin-bottom:10px}
-  .list{max-height:240px;overflow:auto;font-size:14px}
-  .list .line{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.06)}
-  .chat{max-height:380px;overflow:auto;background:#0f1422;border-radius:10px;border:1px solid rgba(255,255,255,.08);padding:8px}
-  .chat .msg{font-size:13px;color:#d1d7e6;border-bottom:1px solid rgba(255,255,255,.06);padding:4px 2px}
-  .tiny{font-size:12px;color:var(--muted)}
-  @media (max-width:1100px){ .layout{grid-template-columns:1fr} }
+  .timer{font-size:14px;font-weight:800;color:var(--warn);margin-top:4px}
+  .result.win{color:var(--good)} .result.lose{color:var(--bad)} .result.push{color:var(--warn)}
+  .list{max-height:220px;overflow:auto;font-size:14px}
+  .line{padding:4px 6px;border-bottom:1px solid rgba(255,255,255,.06)}
+  .chat{max-height:320px;overflow:auto;background:#0f1422;border-radius:10px;border:1px solid rgba(255,255,255,.08);padding:6px}
+  .chat .msg{font-size:13px;color:#d1d7e6;border-bottom:1px solid rgba(255,255,255,.06);padding:3px 2px}
+  @media(max-width:1100px){.layout{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -55,386 +41,52 @@
     <input id="channelInput" type="text" placeholder="Twitch channel (e.g. ryaah)">
     <button id="connectBtn" class="btn">Connect</button>
     <span class="badge" id="conn">Not connected</span>
-    <button id="startBtn" class="btn alt">Start Round</button>
-    <span class="tiny">Commands: <b>!join</b>, <b>!hit</b>, <b>!stand</b></span>
   </div>
-
   <div class="layout">
     <div class="table panel">
       <div class="dealer">
         <div class="row" style="justify-content:space-between;">
-          <div><b>Dealer</b> <span class="score" id="dealerScore">-</span></div>
-          <div id="roundInfo" class="tiny">Waiting for players…</div>
+          <div><b>Dealer</b> <span id="dealerScore">-</span></div>
+          <div id="roundInfo">Waiting for players…</div>
         </div>
         <div class="cards" id="dealerCards"></div>
       </div>
-
-      <div id="playersRow" class="row">
-        <!-- Player hand boxes will be injected here -->
-      </div>
+      <div id="playersRow" class="row"></div>
     </div>
-
-    <div class="sidecol">
-      <div class="panel">
-        <h2>Queue</h2>
-        <div id="queueList" class="list"></div>
-      </div>
-      <div class="panel">
-        <h2>Joins</h2>
-        <div id="joinList" class="list"></div>
-      </div>
-      <div class="panel">
-        <h2>Chat</h2>
-        <div id="chatBox" class="chat"></div>
-      </div>
+    <div>
+      <div class="panel"><h2>Queue</h2><div id="queueList" class="list"></div></div>
+      <div class="panel"><h2>Joins</h2><div id="joinList" class="list"></div></div>
+      <div class="panel"><h2>Chat</h2><div id="chatBox" class="chat"></div></div>
     </div>
   </div>
 </div>
 
 <script>
-/* ================== State ================== */
-const MAX_PLAYERS = 4;
-const FIXED_BET = 10;
-const START_BANKROLL = 10;
-const ACTION_TIMEOUT_MS = 20000; // 20s to act, then auto-stand
+const MAX_PLAYERS=4,FIXED_BET=10,START_BANKROLL=10,TIMEOUT=20;
+let client=null,shoe=[],dealer={},activePlayers=[],queue=[],joinPool=new Set();
+let inRound=false,turn=-1,timer=null,countdown=null,timeLeft=TIMEOUT;
 
-let client = null;
-let connectedChannel = '';
-let shoe = [];
-let shoeDecks = 6;
-let dealer = { hand: [], revealed: false };
-let activePlayers = []; // [{name, bankroll, hand, status, result}]
-let joinPool = new Set(); // unique users who ever joined
-let queue = []; // usernames waiting
-let inRound = false;
-let currentTurnIdx = -1;
-let actionTimer = null;
-
-/* ============= Helpers / UI ============= */
-const $ = (id)=>document.getElementById(id);
-const norm=(s)=> (s||'').trim();
-
-/* Cards */
-function buildShoe(){
-  const ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
-  const suits = ['♠','♥','♦','♣'];
-  shoe = [];
-  for(let d=0; d<shoeDecks; d++){
-    for(const r of ranks){ for(const s of suits){ shoe.push({r,s}); } }
-  }
-  shuffle(shoe);
-}
-function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } }
-function draw(){ if(shoe.length===0) buildShoe(); return shoe.pop(); }
-
-function cardEl(c, hidden=false){
-  const div = document.createElement('div');
-  div.className = 'card' + ((c?.s==='♥'||c?.s==='♦')?' red':'');
-  if(hidden){ div.classList.add('hidden'); return div; }
-  const sm = document.createElement('div'); sm.className='sm'; sm.textContent = c.r; div.appendChild(sm);
-  const big = document.createElement('div'); big.textContent = c.s; div.appendChild(big);
-  return div;
-}
-
-/* Values */
-function bestValue(cards){
-  let total = 0, aces = 0;
-  for(const c of cards){
-    if(c.r==='A'){ aces++; total += 11; }
-    else if(['10','J','Q','K'].includes(c.r)) total += 10;
-    else total += +c.r;
-  }
-  while(total>21 && aces>0){ total -= 10; aces--; }
-  return total;
-}
-function isSoft(cards){
-  let total = 0, aces = 0;
-  for(const c of cards){
-    if(c.r==='A'){ aces++; total += 11; }
-    else if(['10','J','Q','K'].includes(c.r)) total += 10;
-    else total += +c.r;
-  }
-  while(total>21 && aces>0){ total -= 10; aces--; }
-  return aces>0; // an Ace still counts as 11
-}
-function isBlackjack(cards){ return cards.length===2 && bestValue(cards)===21; }
-
-/* UI render */
-function render(){
-  // Dealer
-  const dc = $('dealerCards'); dc.innerHTML='';
-  dealer.hand.forEach((c,i)=> dc.appendChild(cardEl(c, !dealer.revealed && i===1)));
-  $('dealerScore').textContent = dealer.revealed ? bestValue(dealer.hand) : (dealer.hand[0]? bestValue([dealer.hand[0]]) : '-');
-
-  // Players grid
-  const row = $('playersRow'); row.innerHTML='';
-  activePlayers.forEach((p, idx)=>{
-    const boxWrap = document.createElement('div');
-    boxWrap.className = 'handbox';
-    if(idx===currentTurnIdx && inRound) boxWrap.parentElement?.classList?.add('active');
-
-    const head = document.createElement('div');
-    head.className = 'handhead';
-    const left = document.createElement('div');
-    left.innerHTML = `<span class="name">${p.name}</span> <span class="score">${bestValue(p.hand)}</span>`;
-    const right = document.createElement('div');
-    right.innerHTML = `<span class="bank">Bankroll: $${p.bankroll}</span>`;
-    head.append(left,right);
-
-    const cards = document.createElement('div');
-    cards.className = 'cards';
-    p.hand.forEach(c=> cards.appendChild(cardEl(c,false)));
-
-    const status = document.createElement('div');
-    status.className = 'status';
-    let resHtml = '';
-    if(p.result){
-      resHtml = `<span class="result ${p.result.type}">${p.result.text}</span>`;
-    }else{
-      resHtml = (idx===currentTurnIdx && inRound) ? 'Your turn — type !hit or !stand' : '&nbsp;';
-    }
-    status.innerHTML = resHtml;
-
-    boxWrap.append(head, cards, status);
-    const slot = document.createElement('div');
-    slot.className = 'active';
-    slot.appendChild(boxWrap);
-    row.appendChild(slot);
-  });
-
-  // Queue
-  const q = $('queueList'); q.innerHTML='';
-  if(queue.length===0) q.innerHTML = `<div class="line">Queue is empty</div>`;
-  else queue.forEach((u,i)=>{
-    const d = document.createElement('div');
-    d.className='line';
-    d.textContent = `${i+1}. ${u}`;
-    q.appendChild(d);
-  });
-}
-
-/* Chat / joins */
-function pushJoin(name){
-  const jl = $('joinList');
-  const d=document.createElement('div'); d.className='line'; d.textContent = `${name} joined`;
-  jl.prepend(d);
-  while(jl.childElementCount>50) jl.lastChild.remove();
-}
-function pushChat(name, msg){
-  const cb = $('chatBox');
-  const d = document.createElement('div'); d.className='msg';
-  d.innerHTML = `<b>${name}:</b> ${escapeHtml(msg)}`;
-  cb.appendChild(d);
-  cb.scrollTop = cb.scrollHeight;
-}
-function escapeHtml(s){ return s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
-
-/* Round flow */
-function ensureSeats(){
-  // Fill seats to 4
-  while(activePlayers.length < MAX_PLAYERS && queue.length>0){
-    const user = queue.shift();
-    activePlayers.push({name:user, bankroll:START_BANKROLL, hand:[], status:'active', result:null});
-    $('roundInfo').textContent = `${user} joined the table`;
-  }
-}
-function seedFromPoolIfNeeded(){
-  if(activePlayers.length===0 && joinPool.size>=MAX_PLAYERS){
-    const all = Array.from(joinPool);
-    shuffle(all);
-    const picked = all.slice(0, MAX_PLAYERS);
-    const rest = all.slice(MAX_PLAYERS);
-    activePlayers = picked.map(n=>({name:n, bankroll:START_BANKROLL, hand:[], status:'active', result:null}));
-    queue = rest;
-    picked.forEach(n=> $('roundInfo').textContent = `${n} joined the table`);
-  }
-}
-function startRound(){
-  if(inRound) return;
-  seedFromPoolIfNeeded();
-  ensureSeats();
-  if(activePlayers.length < MAX_PLAYERS){
-    $('roundInfo').textContent = `Waiting for players (${activePlayers.length}/${MAX_PLAYERS}) — type !join`;
-    render();
-    return;
-  }
-  inRound = true;
-  currentTurnIdx = 0;
-  dealer = { hand: [draw(), draw()], revealed:false };
-  activePlayers.forEach(p=>{
-    p.hand = [draw(), draw()];
-    p.result = null;
-    p.status = 'playing';
-  });
-  $('roundInfo').textContent = `Round started — ${activePlayers[currentTurnIdx].name}'s turn`;
-  render();
-  checkImmediateBlackjacksOrPrompt();
-}
-
-function checkImmediateBlackjacksOrPrompt(){
-  // If a player has blackjack, mark win and skip their turn
-  const p = activePlayers[currentTurnIdx];
-  if(isBlackjack(p.hand)){
-    // Blackjack win adds +15 to bankroll (3:2 on $10 = +15, total +25 returned; we track wins only)
-    p.bankroll += 15;
-    p.result = {type:'win', text:'Blackjack! +$15'};
-    nextPlayerOrDealer();
-  }else{
-    promptTurn();
-  }
-}
-
-function promptTurn(){
-  const p = activePlayers[currentTurnIdx];
-  // Start action timer
-  clearTimeout(actionTimer);
-  actionTimer = setTimeout(()=>{
-    // auto-stand
-    p.result = p.result || null; // keep null during play
-    handleStand(p.name, true);
-  }, ACTION_TIMEOUT_MS);
-  render();
-}
-
-function handleHit(user){
-  if(!inRound) return;
-  const p = activePlayers[currentTurnIdx];
-  if(!p || p.name.toLowerCase() !== user.toLowerCase()) return;
-  p.hand.push(draw());
-  const val = bestValue(p.hand);
-  if(val>21){
-    // Busted -> out immediately (removed after round)
-    p.status = 'busted';
-    p.result = {type:'lose', text:'❌ Busted — out!'};
-    clearTimeout(actionTimer);
-    nextPlayerOrDealer();
-  }else{
-    render();
-    // keep waiting for next !hit/!stand, timer continues
-  }
-}
-
-function handleStand(user, auto=false){
-  if(!inRound) return;
-  const p = activePlayers[currentTurnIdx];
-  if(!p || p.name.toLowerCase() !== user.toLowerCase()) return;
-  p.status = 'stood';
-  if(auto) p.result = p.result || {type:'push', text:'Auto-stand'};
-  clearTimeout(actionTimer);
-  nextPlayerOrDealer();
-}
-
-function nextPlayerOrDealer(){
-  currentTurnIdx++;
-  if(currentTurnIdx < activePlayers.length){
-    $('roundInfo').textContent = `${activePlayers[currentTurnIdx].name}'s turn`;
-    checkImmediateBlackjacksOrPrompt();
-  }else{
-    // Dealer plays then settle
-    playDealerThenSettle();
-  }
-}
-
-function playDealerThenSettle(){
-  dealer.revealed = true;
-  render();
-  // Dealer plays (stand on soft 17)
-  let vD = bestValue(dealer.hand);
-  while(vD < 17 || (vD===17 && isSoft(dealer.hand))){ // stand on soft 17
-    if(vD===17 && isSoft(dealer.hand)) break;
-    dealer.hand.push(draw());
-    vD = bestValue(dealer.hand);
-    render();
-  }
-  // Settle vs each live player; bankroll increases on wins
-  const dealerVal = bestValue(dealer.hand);
-  activePlayers.forEach(p=>{
-    if(p.status==='busted') return; // already out
-    const pv = bestValue(p.hand);
-    if(pv>21){ p.result = {type:'lose', text:'Busted'}; return; }
-    if(dealerVal>21){ p.result = {type:'win', text:'+ $10 (Dealer bust)'}; p.bankroll += 10; return; }
-    if(pv>dealerVal){ p.result = {type:'win', text:'+ $10'}; p.bankroll += 10; return; }
-    if(pv<dealerVal){ p.result = {type:'lose', text:'Lost'}; return; }
-    p.result = {type:'push', text:'Push'}; // no bankroll change
-  });
-  render();
-  // Remove busted players, announce, add new from queue
-  const removed = [];
-  activePlayers = activePlayers.filter(p=>{
-    if(p.status==='busted'){ removed.push(p.name); return false; }
-    return true;
-  });
-  removed.forEach(n=>{
-    addJoinMessage(`${n} left (busted)`);
-  });
-  // Fill seats for next round
-  ensureSeats();
-  inRound = false;
-  currentTurnIdx = -1;
-  $('roundInfo').textContent = `Round finished — click Start Round`;
-}
-
-function addJoinMessage(text){
-  const jl = $('joinList');
-  const d=document.createElement('div'); d.className='line'; d.textContent=text;
-  jl.prepend(d);
-  while(jl.childElementCount>50) jl.lastChild.remove();
-}
-
-/* Joins & Queue */
-function joinCommand(user){
-  const uname = user.trim();
-  // If already seated, ignore
-  if(activePlayers.find(p=>p.name.toLowerCase()===uname.toLowerCase())) return;
-  // If in queue already, ignore
-  if(queue.map(x=>x.toLowerCase()).includes(uname.toLowerCase())) return;
-
-  joinPool.add(uname);
-  queue.push(uname); // new joins go to end of queue
-  pushJoin(uname);
-
-  // if table has empty seats AND we're not in a round, auto seat now
-  if(!inRound && activePlayers.length < MAX_PLAYERS){
-    ensureSeats();
-  }
-  render();
-}
-
-/* Twitch connect */
-function connectTwitch(channel){
-  connectedChannel = channel;
-  try{ if(client) client.disconnect(); }catch(_){}
-  client = new tmi.Client({connection:{secure:true,reconnect:true},channels:[channel]});
-  client.connect().then(()=>{$('conn').textContent = `Connected: ${channel}`;}).catch(()=>{$('conn').textContent='Not connected';});
-  client.on('message',(ch,tags,msg,self)=>{
-    if(self) return;
-    const name = tags['display-name'] || tags.username;
-    const text = msg.trim();
-    pushChat(name, text);
-
-    const low = text.toLowerCase();
-    if(low.startsWith('!join')) joinCommand(name);
-    else if(low==='!hit') handleHit(name);
-    else if(low==='!stand') handleStand(name);
-  });
-}
-
-/* Controls */
-$('connectBtn').addEventListener('click', ()=>{
-  const ch = norm($('channelInput').value);
-  if(!ch){ alert('Enter a channel'); return; }
-  connectTwitch(ch);
-});
-$('startBtn').addEventListener('click', startRound);
-
-/* URL param ?channel= */
-(function init(){
-  buildShoe();
-  render();
-  const p = new URLSearchParams(location.search);
-  const ch = p.get('channel');
-  if(ch){ $('channelInput').value = ch; connectTwitch(ch); }
-})();
+const $=id=>document.getElementById(id);
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}}
+function buildShoe(){const r=['A','2','3','4','5','6','7','8','9','10','J','Q','K'],s=['♠','♥','♦','♣'];shoe=[];for(let d=0;d<6;d++){for(const rr of r){for(const ss of s)shoe.push({r:rr,s:ss});}}shuffle(shoe);}
+function draw(){if(shoe.length===0)buildShoe();return shoe.pop();}
+function bestValue(cards){let t=0,a=0;for(const c of cards){if(c.r==='A'){a++;t+=11;}else if(['10','J','Q','K'].includes(c.r))t+=10;else t+=+c.r;}while(t>21&&a>0){t-=10;a--;}return t;}
+function isSoft(cards){let t=0,a=0;for(const c of cards){if(c.r==='A'){a++;t+=11;}else if(['10','J','Q','K'].includes(c.r))t+=10;else t+=+c.r;}while(t>21&&a>0){t-=10;a--;}return a>0;}
+function cardEl(c,h=false){const d=document.createElement('div');d.className='card'+((c?.s==='♥'||c?.s==='♦')?' red':'');if(h){d.classList.add('hidden');return d;}const sm=document.createElement('div');sm.className='sm';sm.textContent=c.r;d.appendChild(sm);const big=document.createElement('div');big.textContent=c.s;d.appendChild(big);return d;}
+function render(){const dc=$('dealerCards');dc.innerHTML='';dealer.hand.forEach((c,i)=>dc.appendChild(cardEl(c,!dealer.reveal&&i===1)));$('dealerScore').textContent=dealer.reveal?bestValue(dealer.hand):(dealer.hand[0]?bestValue([dealer.hand[0]]):'-');const row=$('playersRow');row.innerHTML='';activePlayers.forEach((p,i)=>{const box=document.createElement('div');box.className='handbox';const head=document.createElement('div');head.className='handhead';head.innerHTML=`<span><b>${p.name}</b> (${bestValue(p.hand)})</span><span>$${p.bankroll}</span>`;const cards=document.createElement('div');cards.className='cards';p.hand.forEach(c=>cards.appendChild(cardEl(c)));const status=document.createElement('div');status.className='status';if(p.result)status.innerHTML=`<span class="result ${p.result.type}">${p.result.text}</span>`;else if(i===turn&&inRound){status.textContent='Your turn — !hit / !stand';const timerEl=document.createElement('div');timerEl.className='timer';timerEl.id='timer';timerEl.textContent=`⏳ ${timeLeft}s`;status.appendChild(timerEl);}box.append(head,cards,status);row.appendChild(box);});const q=$('queueList');q.innerHTML=queue.map((n,i)=>`<div class=line>${i+1}. ${n}</div>`).join('')||'<div class=line>Queue empty</div>';}
+function pushChat(n,m){const cb=$('chatBox');const d=document.createElement('div');d.className='msg';d.innerHTML=`<b>${n}:</b> ${m}`;cb.appendChild(d);cb.scrollTop=cb.scrollHeight;}
+function ensureSeats(){while(activePlayers.length<MAX_PLAYERS&&queue.length>0){activePlayers.push({name:queue.shift(),bankroll:START_BANKROLL,hand:[],result:null});}}
+function startRound(){if(inRound)return;ensureSeats();if(activePlayers.length<MAX_PLAYERS){$('roundInfo').textContent=`Waiting for players (${activePlayers.length}/${MAX_PLAYERS})`;render();return;}inRound=true;turn=0;dealer={hand:[draw(),draw()],reveal:false};activePlayers.forEach(p=>{p.hand=[draw(),draw()];p.result=null;});$('roundInfo').textContent=`${activePlayers[0].name}'s turn`;render();promptTurn();}
+function promptTurn(){clearTimeout(timer);clearInterval(countdown);timeLeft=TIMEOUT;countdown=setInterval(()=>{timeLeft--;render();if(timeLeft<=0){clearInterval(countdown);const p=activePlayers[turn];p.result={type:'lose',text:'⏰ Timeout — Busted'};p.bankroll=0;nextPlayerOrDealer();}},1000);}
+function handleHit(u){if(!inRound)return;const p=activePlayers[turn];if(!p||p.name.toLowerCase()!==u.toLowerCase())return;p.hand.push(draw());if(bestValue(p.hand)>21){p.result={type:'lose',text:'❌ Busted'};p.bankroll=0;clearInterval(countdown);nextPlayerOrDealer();}render();}
+function handleStand(u){if(!inRound)return;const p=activePlayers[turn];if(!p||p.name.toLowerCase()!==u.toLowerCase())return;p.result={type:'push',text:'Stood'};clearInterval(countdown);nextPlayerOrDealer();}
+function nextPlayerOrDealer(){turn++;if(turn<activePlayers.length){$('roundInfo').textContent=`${activePlayers[turn].name}'s turn`;render();promptTurn();}else playDealer();}
+function playDealer(){dealer.reveal=true;let v=bestValue(dealer.hand);while(v<17||(v===17&&isSoft(dealer.hand))){if(v===17&&isSoft(dealer.hand))break;dealer.hand.push(draw());v=bestValue(dealer.hand);}const dVal=bestValue(dealer.hand);activePlayers.forEach(p=>{if(p.result)return;const vP=bestValue(p.hand);if(vP>21)p.result={type:'lose',text:'Busted'};else if(dVal>21){p.result={type:'win',text:'+ $10'};p.bankroll+=10;}else if(vP>dVal){p.result={type:'win',text:'+ $10'};p.bankroll+=10;}else if(vP<dVal)p.result={type:'lose',text:'Lost'};else p.result={type:'push',text:'Push'};});render();setTimeout(()=>endRound(),5000);}
+function endRound(){activePlayers=activePlayers.filter(p=>!(p.result?.type==='lose'&&p.bankroll<=0));ensureSeats();inRound=false;turn=-1;$('roundInfo').textContent='Next round in 5s…';setTimeout(startRound,5000);}
+function joinCommand(n){if(activePlayers.find(p=>p.name.toLowerCase()===n.toLowerCase()))return;if(queue.find(x=>x.toLowerCase()===n.toLowerCase()))return;joinPool.add(n);queue.push(n);}
+function connectTwitch(ch){try{if(client)client.disconnect();}catch(_){ }client=new tmi.Client({connection:{secure:true,reconnect:true},channels:[ch]});client.connect().then(()=>{$('conn').textContent=`Connected: ${ch}`;});client.on('message',(chan,tags,msg,self)=>{if(self)return;const n=tags['display-name']||tags.username;pushChat(n,msg);const t=msg.trim().toLowerCase();if(t==='!join')joinCommand(n);if(t==='!hit')handleHit(n);if(t==='!stand')handleStand(n);});}
+$('connectBtn').onclick=()=>{const ch=$('channelInput').value.trim();if(ch)connectTwitch(ch);}
+buildShoe();render();
 </script>
 </body>
 </html>
