@@ -51,7 +51,6 @@
         <option value="4" selected>4</option>
       </select>
     </label>
-    <button id="startBtn" class="btn">Start Round</button>
   </div>
   <div class="layout">
     <div class="table panel">
@@ -88,19 +87,16 @@ function render(){const dc=$('dealerCards');dc.innerHTML='';dealer.hand.forEach(
 function pushChat(n,m){const cb=$('chatBox');const d=document.createElement('div');d.className='msg';d.innerHTML=`<b>${n}:</b> ${m}`;cb.appendChild(d);cb.scrollTop=cb.scrollHeight;}
 function ensureSeats(){while(activePlayers.length<MAX_PLAYERS&&queue.length>0){activePlayers.push({name:queue.shift(),bankroll:START_BANKROLL,hand:[],result:null});}}
 function startRound(){if(inRound)return;ensureSeats();if(activePlayers.length<MAX_PLAYERS){$('roundInfo').textContent=`Waiting for players (${activePlayers.length}/${MAX_PLAYERS})`;render();return;}inRound=true;turn=0;dealer={hand:[draw(),draw()],reveal:false};activePlayers.forEach(p=>{p.hand=[draw(),draw()];p.result=null;});$('roundInfo').textContent=`${activePlayers[0].name}'s turn`;render();promptTurn();}
-function promptTurn(){clearInterval(countdown);timeLeft=TIMEOUT;countdown=setInterval(()=>{timeLeft--;render();if(timeLeft<=0){clearInterval(countdown);const p=activePlayers[turn];p.result={type:'lose',text:'⏰ Timeout — Busted'};p.bankroll=0;nextPlayerOrDealer();}},1000);}
+function promptTurn(){clearInterval(countdown);timeLeft=TIMEOUT;countdown=setInterval(()=>{timeLeft--;render();if(timeLeft<=0){clearInterval(countdown);const p=activePlayers[turn];p.result={type:'lose',text:'⏰ Timeout — Eliminated'};p.bankroll=0;nextPlayerOrDealer();}},1000);}
 function handleHit(u){if(!inRound)return;const p=activePlayers[turn];if(!p||p.name.toLowerCase()!==u.toLowerCase())return;p.hand.push(draw());if(bestValue(p.hand)>21){p.result={type:'lose',text:'❌ Busted'};p.bankroll=0;clearInterval(countdown);nextPlayerOrDealer();}render();}
-function handleStand(u){if(!inRound)return;const p=activePlayers[turn];if(!p||p.name.toLowerCase()!==u.toLowerCase())return;p.result={type:'stood',text:'Stood'};clearInterval(countdown);nextPlayerOrDealer();}
+function handleStand(u){if(!inRound)return;const p=activePlayers[turn];if(!p||p.name.toLowerCase()!==u.toLowerCase())return;p.result={type:'push',text:'Stood'};clearInterval(countdown);nextPlayerOrDealer();}
 function nextPlayerOrDealer(){turn++;if(turn<activePlayers.length){$('roundInfo').textContent=`${activePlayers[turn].name}'s turn`;render();promptTurn();}else playDealer();}
-function playDealer(){dealer.reveal=true;let v=bestValue(dealer.hand);while(v<17||(v===17&&isSoft(dealer.hand))){if(v===17&&isSoft(dealer.hand))break;dealer.hand.push(draw());v=bestValue(dealer.hand);}const dVal=bestValue(dealer.hand);activePlayers.forEach(p=>{if(p.result)return;const vP=bestValue(p.hand);if(vP>21)p.result={type:'lose',text:'Busted'};else if(dVal>21){p.result={type:'win',text:'+ $10'};p.bankroll+=10;}else if(vP>dVal){p.result={type:'win',text:'+ $10'};p.bankroll+=10;}else if(vP<dVal)p.result={type:'lose',text:'Lost'};else p.result={type:'push',text:'Push'};});render();setTimeout(()=>endRound(),5000);}
-function endRound(){// kick out anyone who busted OR lost
-  activePlayers=activePlayers.filter(p=>!(p.result?.type==='lose'));
-  ensureSeats();inRound=false;turn=-1;$('roundInfo').textContent='Next round in 5s…';setTimeout(startRound,5000);}
-function joinCommand(n){if(activePlayers.find(p=>p.name.toLowerCase()===n.toLowerCase()))return;if(queue.find(x=>x.toLowerCase()===n.toLowerCase()))return;joinPool.add(n);queue.push(n);const jl=$('joinList');const d=document.createElement('div');d.className='line';d.textContent=`${n} joined`;jl.prepend(d);}
+function playDealer(){dealer.reveal=true;let v=bestValue(dealer.hand);while(v<17||(v===17&&isSoft(dealer.hand))){if(v===17&&isSoft(dealer.hand))break;dealer.hand.push(draw());v=bestValue(dealer.hand);}const dVal=bestValue(dealer.hand);activePlayers.forEach(p=>{if(p.result)return;const vP=bestValue(p.hand);if(vP>21){p.result={type:'lose',text:'Busted'};p.bankroll=0;return;}if(dVal>21){p.result={type:'win',text:'+ $10'};p.bankroll+=10;return;}const diffP=21-vP,diffD=21-dVal;if(diffP<diffD){p.result={type:'win',text:'+ $10'};p.bankroll+=10;}else if(diffP>diffD){p.result={type:'lose',text:'Lost'};p.bankroll=0;}else{p.result={type:'push',text:'Push'};}});render();setTimeout(()=>endRound(),5000);}
+function endRound(){activePlayers=activePlayers.filter(p=>!(p.result?.type==='lose'&&p.bankroll<=0));ensureSeats();inRound=false;turn=-1;$('roundInfo').textContent='Next round in 5s…';setTimeout(startRound,5000);}
+function joinCommand(n){if(activePlayers.find(p=>p.name.toLowerCase()===n.toLowerCase()))return;if(queue.find(x=>x.toLowerCase()===n.toLowerCase()))return;joinPool.add(n);queue.push(n);}
 function connectTwitch(ch){try{if(client)client.disconnect();}catch(_){ }client=new tmi.Client({connection:{secure:true,reconnect:true},channels:[ch]});client.connect().then(()=>{$('conn').textContent=`Connected: ${ch}`;});client.on('message',(chan,tags,msg,self)=>{if(self)return;const n=tags['display-name']||tags.username;pushChat(n,msg);const t=msg.trim().toLowerCase();if(t==='!join')joinCommand(n);if(t==='!hit')handleHit(n);if(t==='!stand')handleStand(n);});}
 $('connectBtn').onclick=()=>{const ch=$('channelInput').value.trim();if(ch)connectTwitch(ch);}
 $('seatSelect').onchange=()=>{MAX_PLAYERS=parseInt($('seatSelect').value,10);$('roundInfo').textContent=`Max players set to ${MAX_PLAYERS}`;render();}
-$('startBtn').onclick=startRound;
 buildShoe();render();
 </script>
 </body>
