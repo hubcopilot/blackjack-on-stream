@@ -60,6 +60,7 @@
         <option value="4" selected>4</option>
       </select>
     </label>
+    <button id="startBtn" class="btn">Start Round</button>
   </div>
   <div class="layout">
     <div class="table panel">
@@ -108,16 +109,17 @@ function pushJoinMsg(txt){const jl=$('joinList');const d=document.createElement(
 function ensureSeats(){while(activePlayers.length<MAX_PLAYERS&&queue.length>0){const u=queue.shift();activePlayers.push({name:u,bankroll:START_BANKROLL,hand:[],result:null});pushJoinMsg(`${u} joined the table`);flashMessage(`Welcome ${u}!`);}}
 
 function startRound(){if(inRound)return;ensureSeats();if(activePlayers.length<MAX_PLAYERS){$('roundInfo').textContent=`Waiting for players (${activePlayers.length}/${MAX_PLAYERS})`;render();return;}inRound=true;turn=0;dealer={hand:[draw(),draw()],reveal:false};activePlayers.forEach(p=>{p.hand=[draw(),draw()];p.result=null;});$('roundInfo').textContent=`${activePlayers[0].name}'s turn`;render();promptTurn();}
-function promptTurn(){clearInterval(countdown);timeLeft=TIMEOUT;countdown=setInterval(()=>{timeLeft--;render();if(timeLeft<=0){clearInterval(countdown);const p=activePlayers[turn];p.result={type:'lose',text:'⏰ Timeout — Eliminated'};p.bankroll=0;pushJoinMsg(`${p.name} was eliminated`);nextPlayerOrDealer();}},1000);}
-function handleHit(u){if(!inRound)return;const p=activePlayers[turn];if(!p||p.name.toLowerCase()!==u.toLowerCase())return;p.hand.push(draw());if(bestValue(p.hand)>21){p.result={type:'lose',text:'❌ Busted'};p.bankroll=0;clearInterval(countdown);pushJoinMsg(`${p.name} busted and left`);nextPlayerOrDealer();}render();}
+function promptTurn(){clearInterval(countdown);timeLeft=TIMEOUT;countdown=setInterval(()=>{timeLeft--;render();if(timeLeft<=0){clearInterval(countdown);const p=activePlayers[turn];p.result={type:'lose',text:'⏰ Timeout — Eliminated'};p.bankroll=0;flashMessage(`${p.name} eliminated!`);pushJoinMsg(`${p.name} was eliminated`);nextPlayerOrDealer();}},1000);}
+function handleHit(u){if(!inRound)return;const p=activePlayers[turn];if(!p||p.name.toLowerCase()!==u.toLowerCase())return;p.hand.push(draw());if(bestValue(p.hand)>21){p.result={type:'lose',text:'❌ Busted'};p.bankroll=0;clearInterval(countdown);flashMessage(`${p.name} busted!`);pushJoinMsg(`${p.name} busted and left`);nextPlayerOrDealer();}render();}
 function handleStand(u){if(!inRound)return;const p=activePlayers[turn];if(!p||p.name.toLowerCase()!==u.toLowerCase())return;p.result={type:'push',text:'Stood'};clearInterval(countdown);nextPlayerOrDealer();}
 function nextPlayerOrDealer(){turn++;if(turn<activePlayers.length){$('roundInfo').textContent=`${activePlayers[turn].name}'s turn`;render();promptTurn();}else playDealer();}
-function playDealer(){dealer.reveal=true;let v=bestValue(dealer.hand);while(v<17||(v===17&&isSoft(dealer.hand))){if(v===17&&isSoft(dealer.hand))break;dealer.hand.push(draw());v=bestValue(dealer.hand);}const dVal=bestValue(dealer.hand);activePlayers.forEach(p=>{if(p.result)return;const vP=bestValue(p.hand);if(vP>21){p.result={type:'lose',text:'Busted'};p.bankroll=0;pushJoinMsg(`${p.name} busted and left`);return;}if(dVal>21){p.result={type:'win',text:'+ $10'};p.bankroll+=10;return;}const diffP=21-vP,diffD=21-dVal;if(diffP<diffD){p.result={type:'win',text:'+ $10'};p.bankroll+=10;}else if(diffP>diffD){p.result={type:'lose',text:'Lost'};p.bankroll=0;pushJoinMsg(`${p.name} lost to dealer and left`);}else{p.result={type:'push',text:'Push'};}});render();setTimeout(()=>endRound(),5000);}
-function endRound(){activePlayers=activePlayers.filter(p=>!(p.result?.type==='lose'&&p.bankroll<=0));ensureSeats();inRound=false;turn=-1;$('roundInfo').textContent='Next round in 5s…';setTimeout(startRound,5000);}
+function playDealer(){dealer.reveal=true;let v=bestValue(dealer.hand);while(v<17||(v===17&&isSoft(dealer.hand))){if(v===17&&isSoft(dealer.hand))break;dealer.hand.push(draw());v=bestValue(dealer.hand);}const dVal=bestValue(dealer.hand);activePlayers.forEach(p=>{if(p.result)return;const vP=bestValue(p.hand);if(vP>21){p.result={type:'lose',text:'Busted'};p.bankroll=0;flashMessage(`${p.name} busted!`);pushJoinMsg(`${p.name} busted and left`);return;}if(dVal>21){p.result={type:'win',text:'+ $10'};p.bankroll+=10;return;}const diffP=21-vP,diffD=21-dVal;if(diffP<diffD){p.result={type:'win',text:'+ $10'};p.bankroll+=10;}else if(diffP>diffD){p.result={type:'lose',text:'Lost'};p.bankroll=0;flashMessage(`${p.name} lost!`);pushJoinMsg(`${p.name} lost to dealer and left`);}else{p.result={type:'push',text:'Push'};}});render();setTimeout(()=>endRound(),5000);}
+function endRound(){activePlayers=activePlayers.filter(p=>!(p.result?.type==='lose'&&p.bankroll<=0));ensureSeats();inRound=false;turn=-1;$('roundInfo').textContent='Round finished — press Start Round';}
 function joinCommand(n){if(activePlayers.find(p=>p.name.toLowerCase()===n.toLowerCase()))return;if(queue.find(x=>x.toLowerCase()===n.toLowerCase()))return;joinPool.add(n);queue.push(n);pushJoinMsg(`${n} queued to play`);}
 function connectTwitch(ch){try{if(client)client.disconnect();}catch(_){ }client=new tmi.Client({connection:{secure:true,reconnect:true},channels:[ch]});client.connect().then(()=>{$('conn').textContent=`Connected: ${ch}`;});client.on('message',(chan,tags,msg,self)=>{if(self)return;const n=tags['display-name']||tags.username;pushChat(n,msg);const t=msg.trim().toLowerCase();if(t==='!join')joinCommand(n);if(t==='!hit')handleHit(n);if(t==='!stand')handleStand(n);});}
 $('connectBtn').onclick=()=>{const ch=$('channelInput').value.trim();if(ch)connectTwitch(ch);}
 $('seatSelect').onchange=()=>{MAX_PLAYERS=parseInt($('seatSelect').value,10);$('roundInfo').textContent=`Max players set to ${MAX_PLAYERS}`;render();}
+$('startBtn').onclick=startRound;
 buildShoe();render();
 </script>
 </body>
