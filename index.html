@@ -6,9 +6,13 @@
 <title>Blackjack — Twitch Overlay</title>
 <script src="https://cdn.jsdelivr.net/npm/tmi.js/dist/tmi.min.js"></script>
 <style>
-  :root{--bg:#0c0f14;--panel:#121826;--accent:#20d3a6;--muted:#9aa4b2;--text:#eef2f7;--good:#45e39a;--bad:#ff6b6b;--warn:#ffb454;}
+  :root{
+    --bg:#0c0f14; --panel:#121826; --accent:#20d3a6; --muted:#9aa4b2; --text:#eef2f7;
+    --good:#45e39a; --bad:#ff6b6b; --warn:#ffb454;
+  }
+  *{box-sizing:border-box}
   html,body{height:100%;margin:0;background:#0c0f14;color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
-  .wrap{max-width:1400px;margin:auto;padding:12px}
+  .wrap{max-width:1400px;margin-inline:auto;padding:12px}
   .topbar{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
   .topbar input{width:200px;padding:6px;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:#0f1422;color:var(--text)}
   .badge{background:#1a233c;border:1px solid rgba(255,255,255,.1);padding:6px 10px;border-radius:999px;font-size:12px}
@@ -43,7 +47,7 @@
     <input id="channelInput" type="text" placeholder="Twitch channel (e.g. ryaah)">
     <button id="connectBtn" class="btn">Connect</button>
     <span class="badge" id="conn">Not connected</span>
-    <label>Seats: 
+    <label>Seats:
       <select id="seatSelect">
         <option value="1">1</option>
         <option value="2">2</option>
@@ -51,7 +55,10 @@
         <option value="4" selected>4</option>
       </select>
     </label>
+    <button id="startBtn" class="btn">Start Round</button>
+    <span style="font-size:12px;color:var(--muted)">Commands: <b>!join</b>, <b>!hit</b>, <b>!stand</b></span>
   </div>
+
   <div class="layout">
     <div class="table panel">
       <div class="dealer">
@@ -74,7 +81,7 @@
 <script>
 let MAX_PLAYERS=4,FIXED_BET=10,START_BANKROLL=10,TIMEOUT=20;
 let client=null,shoe=[],dealer={},activePlayers=[],queue=[],joinPool=new Set();
-let inRound=false,turn=-1,timer=null,countdown=null,timeLeft=TIMEOUT;
+let inRound=false,turn=-1,countdown=null,timeLeft=TIMEOUT;
 
 const $=id=>document.getElementById(id);
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}}
@@ -85,6 +92,7 @@ function isSoft(cards){let t=0,a=0;for(const c of cards){if(c.r==='A'){a++;t+=11
 function cardEl(c,h=false){const d=document.createElement('div');d.className='card'+((c?.s==='♥'||c?.s==='♦')?' red':'');if(h){d.classList.add('hidden');return d;}const sm=document.createElement('div');sm.className='sm';sm.textContent=c.r;d.appendChild(sm);const big=document.createElement('div');big.textContent=c.s;d.appendChild(big);return d;}
 function render(){const dc=$('dealerCards');dc.innerHTML='';dealer.hand.forEach((c,i)=>dc.appendChild(cardEl(c,!dealer.reveal&&i===1)));$('dealerScore').textContent=dealer.reveal?bestValue(dealer.hand):(dealer.hand[0]?bestValue([dealer.hand[0]]):'-');const row=$('playersRow');row.innerHTML='';activePlayers.forEach((p,i)=>{const box=document.createElement('div');box.className='handbox';const head=document.createElement('div');head.className='handhead';head.innerHTML=`<span><b>${p.name}</b> (${bestValue(p.hand)})</span><span>$${p.bankroll}</span>`;const cards=document.createElement('div');cards.className='cards';p.hand.forEach(c=>cards.appendChild(cardEl(c)));const status=document.createElement('div');status.className='status';if(p.result)status.innerHTML=`<span class="result ${p.result.type}">${p.result.text}</span>`;else if(i===turn&&inRound){status.textContent='Your turn — !hit / !stand';const timerEl=document.createElement('div');timerEl.className='timer';timerEl.id='timer';timerEl.textContent=`⏳ ${timeLeft}s`;status.appendChild(timerEl);}box.append(head,cards,status);row.appendChild(box);});const q=$('queueList');q.innerHTML=queue.map((n,i)=>`<div class=line>${i+1}. ${n}</div>`).join('')||'<div class=line>Queue empty</div>';}
 function pushChat(n,m){const cb=$('chatBox');const d=document.createElement('div');d.className='msg';d.innerHTML=`<b>${n}:</b> ${m}`;cb.appendChild(d);cb.scrollTop=cb.scrollHeight;}
+function pushJoin(n){const jl=$('joinList');const d=document.createElement('div');d.className='line';d.textContent=`${n} joined`;jl.prepend(d);while(jl.childElementCount>50)jl.lastChild.remove();}
 function ensureSeats(){while(activePlayers.length<MAX_PLAYERS&&queue.length>0){activePlayers.push({name:queue.shift(),bankroll:START_BANKROLL,hand:[],result:null});}}
 function startRound(){if(inRound)return;ensureSeats();if(activePlayers.length<MAX_PLAYERS){$('roundInfo').textContent=`Waiting for players (${activePlayers.length}/${MAX_PLAYERS})`;render();return;}inRound=true;turn=0;dealer={hand:[draw(),draw()],reveal:false};activePlayers.forEach(p=>{p.hand=[draw(),draw()];p.result=null;});$('roundInfo').textContent=`${activePlayers[0].name}'s turn`;render();promptTurn();}
 function promptTurn(){clearInterval(countdown);timeLeft=TIMEOUT;countdown=setInterval(()=>{timeLeft--;render();if(timeLeft<=0){clearInterval(countdown);const p=activePlayers[turn];p.result={type:'lose',text:'⏰ Timeout — Busted'};p.bankroll=0;nextPlayerOrDealer();}},1000);}
@@ -93,10 +101,11 @@ function handleStand(u){if(!inRound)return;const p=activePlayers[turn];if(!p||p.
 function nextPlayerOrDealer(){turn++;if(turn<activePlayers.length){$('roundInfo').textContent=`${activePlayers[turn].name}'s turn`;render();promptTurn();}else playDealer();}
 function playDealer(){dealer.reveal=true;let v=bestValue(dealer.hand);while(v<17||(v===17&&isSoft(dealer.hand))){if(v===17&&isSoft(dealer.hand))break;dealer.hand.push(draw());v=bestValue(dealer.hand);}const dVal=bestValue(dealer.hand);activePlayers.forEach(p=>{if(p.result)return;const vP=bestValue(p.hand);if(vP>21)p.result={type:'lose',text:'Busted'};else if(dVal>21){p.result={type:'win',text:'+ $10'};p.bankroll+=10;}else if(vP>dVal){p.result={type:'win',text:'+ $10'};p.bankroll+=10;}else if(vP<dVal)p.result={type:'lose',text:'Lost'};else p.result={type:'push',text:'Push'};});render();setTimeout(()=>endRound(),5000);}
 function endRound(){activePlayers=activePlayers.filter(p=>!(p.result?.type==='lose'&&p.bankroll<=0));ensureSeats();inRound=false;turn=-1;$('roundInfo').textContent='Next round in 5s…';setTimeout(startRound,5000);}
-function joinCommand(n){if(activePlayers.find(p=>p.name.toLowerCase()===n.toLowerCase()))return;if(queue.find(x=>x.toLowerCase()===n.toLowerCase()))return;joinPool.add(n);queue.push(n);}
+function joinCommand(n){if(activePlayers.find(p=>p.name.toLowerCase()===n.toLowerCase()))return;if(queue.find(x=>x.toLowerCase()===n.toLowerCase()))return;joinPool.add(n);queue.push(n);pushJoin(n);}
 function connectTwitch(ch){try{if(client)client.disconnect();}catch(_){ }client=new tmi.Client({connection:{secure:true,reconnect:true},channels:[ch]});client.connect().then(()=>{$('conn').textContent=`Connected: ${ch}`;});client.on('message',(chan,tags,msg,self)=>{if(self)return;const n=tags['display-name']||tags.username;pushChat(n,msg);const t=msg.trim().toLowerCase();if(t==='!join')joinCommand(n);if(t==='!hit')handleHit(n);if(t==='!stand')handleStand(n);});}
 $('connectBtn').onclick=()=>{const ch=$('channelInput').value.trim();if(ch)connectTwitch(ch);}
 $('seatSelect').onchange=()=>{MAX_PLAYERS=parseInt($('seatSelect').value,10);$('roundInfo').textContent=`Max players set to ${MAX_PLAYERS}`;render();}
+$('startBtn').onclick=startRound;
 buildShoe();render();
 </script>
 </body>
